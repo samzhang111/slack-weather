@@ -4,36 +4,36 @@ from flask import render_template
 from flask import request
 from flask import Response
 from flask import abort
-
+from flask import jsonify
 import json
+import os
 
-#from settings import slack_key
 import re
+import requests
 
-#slack_webhook = 'https://dssg.slack.com/services/hooks/incoming-webhook?token={slack_key}'
-w3w_base = 'http://w3w.co/'
-w3w_api = 'http://api.what3words.com/w3w'
 
-is_three_word = re.compile('^\w\w\w\w+?\.\w\w\w\w+?\.\w\w\w\w+$')
+slack_url = os.getenv('DSSG_SLACK_URL')
+
+def write_slack(msg, description):
+    payload = {
+            'text': '''Is the weather weird today?
+<http://www.istheweatherweird.com|{msg}>
+{desc}'''.format(msg=msg, desc=description)
+            }
+    print jsonify(payload)
+    r = requests.post(slack_url, data = json.dumps(payload))
+
+    return r
 
 @app.route('/receive', methods=['POST'])
-def slack_receive():
-#========================================================================
-# return w3w link
-##===========================================================================
-    
-    msg = request.form['text']
-    chunks = [x.strip() for x in msg.split()]
+def kimono_endpoint():
+    print request.data, request.values
+    result = json.loads(request.data)['results']['collection1'][0]
+    verdict = result['verdict']
+    statement = result['statement']
+    write_slack(verdict, statement)
 
-    responses = []
-    for token in chunks:
-
-        if is_three_word.match(token):
-            # send link
-            response_text = '<{}>'.format(w3w_base + token)
-            responses.append(response_text)
-
-    return Response(json.dumps({'text': '\n'.join(responses)}))
+    return jsonify({})
 
 @app.route('/')
 def root():
